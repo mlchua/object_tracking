@@ -32,7 +32,7 @@ int main(int argc, char* argv[])
 	for (auto iter : lsvm.get_class_names()) {
 		std::cout << iter << std::endl;
 	}
-
+	
 	for (auto iter : images_filenames) {
 		cv::Mat image = cv::imread(iter);	
 		if (image.empty()) { 
@@ -40,7 +40,7 @@ int main(int argc, char* argv[])
 		}
 
 		std::cout << "Processing: " << iter << std::endl;
-		lsvm.detect(image);
+		ch::detections detections = lsvm.detect(image);
 		lsvm.display(image, true);
 
 	}
