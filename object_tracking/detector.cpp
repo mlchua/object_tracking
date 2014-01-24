@@ -5,65 +5,64 @@
 
 namespace ch {
 
-	bboxes::bboxes(cv::Rect t_rect, float t_score, int t_id) {
-		rect = t_rect;
-		score = t_score;
-		classID = t_id;
+	bboxes::bboxes(cv::Rect _rect, float _score, int _id) 
+		: rect(_rect), score(_score), classID(_id) {}
+
+	lsvm::lsvm(std::vector<std::string> models, const float _detect_th, const float _overlap_th) 
+		: detect_th(_detect_th), overlap_th(_overlap_th) {
+				type=DET_TYPE::LSVM;
+				detector.load(models);
+				cv::generateColors(colors, get_class_count());
 	}
 
-	bboxes detections::lsvmdet_to_bbox(cv::LatentSvmDetector::ObjectDetection lsvmdet) {
-		bboxes new_box(lsvmdet.rect, lsvmdet.score, lsvmdet.classID);
-		return new_box;
-	}
-
-	detections::detections(std::vector<cv::LatentSvmDetector::ObjectDetection> detections) {
-		for (auto r_iter = detections.rbegin(); r_iter != detections.rend(); ++r_iter) {
-			boxes.push_back(lsvmdet_to_bbox(*r_iter));
-		}
-	}
-
-	lsvm_detector::lsvm_detector(float thresh_val) {
-		type = DET_TYPE::LSVM;
-		overlap_threshold = thresh_val;
-	}
-
-	lsvm_detector::lsvm_detector(const std::vector<std::string>& models, float thresh_val) { 
-		type = DET_TYPE::LSVM; 
-		overlap_threshold = thresh_val;
-		load_models(models);
-	}
-
-	ch::detections lsvm_detector::detect(cv::Mat& image) {
+	const std::vector<ch::bboxes> lsvm::detect(const cv::Mat& image) {
 		cv::TickMeter meter;
 		meter.start();
-		detector.detect(image, detections, overlap_threshold);
+		detector.detect(image, detections, overlap_th, 4);
 		meter.stop();
 		detection_time = meter.getTimeSec();
 
-		ch::detections detects(detections);
-		return detects;
+		std::vector<ch::bboxes> bounding_boxes;
+		for (auto r_iter = detections.rbegin(); r_iter != detections.rend(); ++r_iter) {
+			if (r_iter->score > detect_th) {
+				ch::bboxes box(r_iter->rect, r_iter->score, r_iter->classID);
+				bounding_boxes.push_back(box);
+			}
+		}
+		return bounding_boxes;
 	}
 
-	void lsvm_detector::display(cv::Mat& image, bool wait_key) {
-		cv::generateColors(colors, get_class_count());
+	void lsvm::display_detections(const cv::Mat& image, bool wait_key) {
+		const int font_face = cv::FONT_HERSHEY_SIMPLEX;
+		const double font_scale = 0.35;
+
+		cv::Mat drawn(image);
+
 		for (auto iter : detections) {
-			cv::rectangle(image, iter.rect, colors[iter.classID], 3);
-			cv::putText(image, get_class_names()[iter.classID], cv::Point(iter.rect.x+4,iter.rect.y+13), 
-				cv::FONT_HERSHEY_SIMPLEX, 0.35, colors[iter.classID], 1);
+			if (iter.score > detect_th) {
+				cv::rectangle(drawn, iter.rect, colors[iter.classID], 3);
+				cv::putText(drawn, get_class_names()[iter.classID], 
+					cv::Point(iter.rect.x+4,iter.rect.y+13), 
+					font_face, font_scale, colors[iter.classID], 1);
+			}
 		}
+
 		cv::imshow("result", image);
 		if (wait_key) {
 			cv::waitKey(0);
 		}
 	}
 
-	bool lsvm_detector::load_models(const std::vector<std::string>& models) {
-		if (!models.empty() && detector.load(models) == true) {
-			return true;
-		}
-		else {
-			return false;
-		}
+	bool lsvm::load_models(const std::vector<std::string>& models) {
+		return (!models.empty() && detector.load(models) == true) 
+			? true : false;
 	}
 
+	const std::vector<std::string>& lsvm::get_class_names() {
+		return detector.getClassNames();
+	}
+
+	const size_t lsvm::get_class_count() {
+		return detector.getClassCount();
+	}
 }

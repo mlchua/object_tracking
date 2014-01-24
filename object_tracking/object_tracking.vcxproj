@@ -85,11 +85,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="detector.cpp" />
+    <ClCompile Include="feed.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="misc.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="detector.h" />
+    <ClInclude Include="feed.h" />
     <ClInclude Include="misc.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

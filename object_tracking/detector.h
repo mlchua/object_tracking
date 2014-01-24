@@ -12,26 +12,18 @@ namespace ch {
 
 	class bboxes {
 	public:
-		bboxes();
-		bboxes(cv::Rect t_rect, float t_score, int t_id);
+		bboxes(cv::Rect _rect, float _score, int _id);
 		cv::Rect rect;
 		float score;
 		int classID;
 	};
 
-	class detections {
-	public:
-		detections();
-		detections(std::vector<cv::LatentSvmDetector::ObjectDetection> detections);
-		std::vector<bboxes> boxes;
-	private:
-		bboxes lsvmdet_to_bbox(cv::LatentSvmDetector::ObjectDetection lsvmdet);
-	};
 
 	class detector_base {
 	public:
-		virtual ch::detections detect(cv::Mat& image) = 0;
-		virtual void display(cv::Mat& image, bool wait_key) = 0;
+		virtual const std::vector<ch::bboxes> detect(const cv::Mat& image) = 0;
+		virtual void display_detections(const cv::Mat& image, bool wait_key) = 0;
+		virtual const std::vector<std::string>& get_class_names() = 0;
 		DET_TYPE get_det_type() { return type; }
 		double get_detect_time() { return detection_time; }
 	protected:
@@ -40,22 +32,24 @@ namespace ch {
 	};
 
 	
-	class lsvm_detector : public detector_base {
+	class lsvm : public detector_base {
 	public:
-		lsvm_detector(float thresh_val = 0.2f);
-		lsvm_detector(const std::vector<std::string>& models, float thresh_val = 0.2f);
+		lsvm(std::vector<std::string> models, const float _detect_th=-2.0f, float _overlap_th=0.5f);
 
-		ch::detections detect(cv::Mat& image);
-		void display(cv::Mat& image, bool wait_key = false);
+		const std::vector<ch::bboxes> detect(const cv::Mat& image);
+		void display_detections(const cv::Mat& image, bool wait_key = false);
+
+		const std::vector<std::string>& get_class_names();
+		const size_t get_class_count();
+
 		bool load_models(const std::vector<std::string>& models);
-
-		const std::vector<std::string>& get_class_names() {return detector.getClassNames();}
-		size_t get_class_count() {return detector.getClassCount();}
+	
 	private:
-		float overlap_threshold;
+		float overlap_th;
+		float detect_th;
 		cv::LatentSvmDetector detector;
-		std::vector<cv::LatentSvmDetector::ObjectDetection> detections;
 		std::vector<cv::Scalar> colors;
+		std::vector<cv::LatentSvmDetector::ObjectDetection> detections;
 	};
 
 }
