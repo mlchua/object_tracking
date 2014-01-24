@@ -48,9 +48,7 @@ namespace ch {
 		}
 
 		cv::imshow("result", image);
-		if (wait_key) {
-			cv::waitKey(0);
-		}
+		(wait_key) ? cv::waitKey(0) : cv::waitKey(30);
 	}
 
 	bool lsvm::load_models(const std::vector<std::string>& models) {

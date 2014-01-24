@@ -26,23 +26,22 @@ int main(int argc, char* argv[])
 
 	std::vector<std::string> models = ch::readDirectory(models_folder);
 
-	//std::unique_ptr<ch::detector_base> lsvm(new ch::lsvm(models, 1.0f));
-	ch::lsvm lsvm(models, -1.0);
-		ch::feed feed(images_folder);
+	std::unique_ptr<ch::detector_base> lsvm(new ch::lsvm(models, -1.0f));
+	ch::feed feed(images_folder);
 
 	std::cout << "Models loaded: " << std::endl;
-	for (auto iter : lsvm.get_class_names()) {
+	for (auto iter : lsvm->get_class_names()) {
 		std::cout << iter << std::endl;
 	}
 
 	while (feed.is_open()) {
 		std::cout << "Processing: " << feed.get_current_name() << std::endl;
-		std::vector<ch::bboxes> detections = lsvm.detect(feed.get_current_image());
+		std::vector<ch::bboxes> detections = lsvm->detect(feed.get_current_image());
 		for (auto iter : detections) {
 			std::cout << iter.rect.x << '\t' << iter.rect.y << '\t';
 			std::cout << iter.classID << '\t' << iter.score << std::endl;
 		}
-		lsvm.display_detections(feed.get_current_image(), true);
+		lsvm->display_detections(feed.get_current_image(), false);
 		++feed;
 	}
 	

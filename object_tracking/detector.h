@@ -23,6 +23,7 @@ namespace ch {
 	public:
 		virtual const std::vector<ch::bboxes> detect(const cv::Mat& image) = 0;
 		virtual void display_detections(const cv::Mat& image, bool wait_key) = 0;
+
 		virtual const std::vector<std::string>& get_class_names() = 0;
 		DET_TYPE get_det_type() { return type; }
 		double get_detect_time() { return detection_time; }
