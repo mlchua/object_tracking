@@ -41,7 +41,7 @@ namespace ch {
 		void display_detections(const cv::Mat& image, bool wait_key = false);
 
 		const std::vector<std::string>& get_class_names();
-		const size_t get_class_count();
+		const std::size_t get_class_count();
 
 		bool load_models(const std::vector<std::string>& models);
 	

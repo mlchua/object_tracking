@@ -23,12 +23,15 @@ namespace ch {
 		detection_time = meter.getTimeSec();
 
 		std::vector<ch::bboxes> bounding_boxes;
+		std::vector<cv::LatentSvmDetector::ObjectDetection> t_detections;
 		for (auto r_iter = detections.rbegin(); r_iter != detections.rend(); ++r_iter) {
 			if (r_iter->score > detect_th) {
+				t_detections.push_back(*r_iter);
 				ch::bboxes box(r_iter->rect, r_iter->score, r_iter->classID);
 				bounding_boxes.push_back(box);
 			}
 		}
+		detections = t_detections;
 		return bounding_boxes;
 	}
 
@@ -38,13 +41,13 @@ namespace ch {
 
 		cv::Mat drawn(image);
 
+		std::size_t index = 0;
 		for (auto iter : detections) {
-			if (iter.score > detect_th) {
-				cv::rectangle(drawn, iter.rect, colors[iter.classID], 3);
-				cv::putText(drawn, get_class_names()[iter.classID], 
-					cv::Point(iter.rect.x+4,iter.rect.y+13), 
-					font_face, font_scale, colors[iter.classID], 1);
-			}
+			cv::rectangle(drawn, iter.rect, colors[iter.classID], 3);
+			cv::putText(drawn, std::to_string(index), 
+				cv::Point(iter.rect.x+4,iter.rect.y+13), 
+				font_face, font_scale, colors[iter.classID], 1);
+			++index;
 		}
 
 		cv::imshow("result", image);
@@ -60,7 +63,7 @@ namespace ch {
 		return detector.getClassNames();
 	}
 
-	const size_t lsvm::get_class_count() {
+	const std::size_t lsvm::get_class_count() {
 		return detector.getClassCount();
 	}
 }

@@ -26,7 +26,9 @@ int main(int argc, char* argv[])
 
 	std::vector<std::string> models = ch::readDirectory(models_folder);
 
-	std::unique_ptr<ch::detector_base> lsvm(new ch::lsvm(models, -1.0f));
+	const float detect_th = 0.0f;
+	const float overlap_th = 0.2f;
+	std::unique_ptr<ch::detector_base> lsvm(new ch::lsvm(models, detect_th, overlap_th));
 	ch::feed feed(images_folder);
 
 	std::cout << "Models loaded: " << std::endl;
@@ -37,9 +39,12 @@ int main(int argc, char* argv[])
 	while (feed.is_open()) {
 		std::cout << "Processing: " << feed.get_current_name() << std::endl;
 		std::vector<ch::bboxes> detections = lsvm->detect(feed.get_current_image());
+		std::size_t index = 0;
+		std::cout << "Det#\tScore" << std::endl;
 		for (auto iter : detections) {
-			std::cout << iter.rect.x << '\t' << iter.rect.y << '\t';
-			std::cout << iter.classID << '\t' << iter.score << std::endl;
+			std::cout << "Det" << index << "\t";
+			std::cout << iter.score << std::endl;
+			++index;
 		}
 		lsvm->display_detections(feed.get_current_image(), false);
 		++feed;
