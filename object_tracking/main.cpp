@@ -15,8 +15,8 @@ int main(int argc, char* argv[])
 { 
 	std::string images_folder, models_folder;
 	if( argc > 2 ) {
-        images_folder = argv[1];
-        models_folder = argv[2];
+		images_folder = argv[1];
+		models_folder = argv[2];
 	}
 
 	else {
