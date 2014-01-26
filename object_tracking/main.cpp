@@ -17,7 +17,8 @@ int main(int argc, char* argv[])
 	if( argc > 2 ) {
         images_folder = argv[1];
         models_folder = argv[2];
-    }
+	}
+
 	else {
 		std::cout << std::endl << "Using default images and models folders." << std::endl;
 		images_folder = "images";
