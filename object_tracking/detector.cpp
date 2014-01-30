@@ -15,12 +15,8 @@ namespace ch {
 				cv::generateColors(colors, get_class_count());
 	}
 
-	const std::vector<ch::bboxes> lsvm::detect(const cv::Mat& image) {
-		cv::TickMeter meter;
-		meter.start();
-		detector.detect(image, detections, overlap_th, 4);
-		meter.stop();
-		detection_time = meter.getTimeSec();
+	std::vector<ch::bboxes> lsvm::detect(const cv::Mat& image) {
+		detector.detect(image, detections, overlap_th);
 
 		std::vector<ch::bboxes> bounding_boxes;
 		std::vector<cv::LatentSvmDetector::ObjectDetection> t_detections;
