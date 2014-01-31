@@ -16,7 +16,6 @@
 
 int main(int argc, char* argv[])
 { 
-
 	std::string images_folder, models_folder;
 	if( argc > 2 ) {
 		images_folder = argv[1];
@@ -34,6 +33,7 @@ int main(int argc, char* argv[])
 	const float detect_th = 0.0f;
 	const float overlap_th = 0.2f;
 	std::unique_ptr<ch::detector_base> lsvm(new ch::lsvm(models, detect_th, overlap_th));
+	std::unique_ptr<ch::tracker> kalman(new ch::tracker);
 	ch::feed feed(images_folder);
 
 	std::cout << "Models loaded: " << std::endl;
@@ -43,7 +43,12 @@ int main(int argc, char* argv[])
 
 	while (feed.is_open()) {
 		std::cout << "Processing: " << feed.get_current_name() << std::endl;
+
+		std::vector<cv::Point2f> predictions = kalman->predict();
 		std::vector<ch::bboxes> detections = lsvm->detect(feed.get_current_image());
+		std::vector<std::pair<std::size_t,cv::Point2f>> corrections = 
+			kalman->correct(detections);
+
 		std::size_t index = 0;
 		std::cout << "Det#\tScore" << std::endl;
 		for (auto iter : detections) {
@@ -51,10 +56,10 @@ int main(int argc, char* argv[])
 			std::cout << iter.score << std::endl;
 			++index;
 		}
+
 		lsvm->display_detections(feed.get_current_image(), false);
 		++feed;
 	}
-	
 	
 	return 0;
 }

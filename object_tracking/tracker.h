@@ -13,16 +13,17 @@ namespace ch {
 
 	class tracker {
 	public:
-		std::vector<std::pair<std::size_t,cv::Point2f>> update(const std::vector<ch::bboxes>& detections);
+		const std::vector<cv::Point2f>& predict();
+		std::vector<std::pair<std::size_t,cv::Point2f>> correct(const std::vector<ch::bboxes>& detections);
 
 	private:
-		std::vector<cv::Point2f> predict();
-		std::vector<int> assign_detections(const std::vector<cv::Point2f>& pres, const std::vector<ch::bboxes>& dets);
-		std::vector<std::vector<float>> compute_lms_net(const std::vector<cv::Point2f>& pres, const std::vector<ch::bboxes>& dets);
+		std::vector<int> assign_detections(const std::vector<ch::bboxes>& detections);
+		std::vector<std::vector<float>> compute_lms_net(const std::vector<ch::bboxes>& detections);
 		std::vector<std::size_t> tracker::sort_index_by_min(const std::vector<float>& scores);
 		
 		void add_trackers(const std::size_t count);
 
 		std::vector<cv::KalmanFilter> trackers;
+		std::vector<cv::Point2f> predictions;
 	};
 }

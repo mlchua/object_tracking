@@ -113,12 +113,14 @@ namespace ch {
 			cv::circle( img, cv::Point(third[t].second,third[t].first), 3, cv::Scalar(255,0,0), -1);
 			std::cout << "Blue:\tX:\t" << third[t].first << "\tY:\t" << third[t].second << std::endl;
 
+			track.predict();
+
 			std::vector<ch::bboxes> detections;
 			detections.push_back(ch::bboxes(cv::Rect(first[t].first,first[t].second,0,0), 1.0f, 0));
 			detections.push_back(ch::bboxes(cv::Rect(second[t].first,second[t].second,0,0), 1.0f, 0));
 			detections.push_back(ch::bboxes(cv::Rect(third[t].first,third[t].second,0,0), 1.0f, 0));
 
-			std::vector<std::pair<std::size_t,cv::Point2f>> corrects = track.update(detections);
+			std::vector<std::pair<std::size_t,cv::Point2f>> corrects = track.correct(detections);
 
 			for (auto it : corrects) {
 				int c_x = it.second.x;

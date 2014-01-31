@@ -6,10 +6,33 @@
 #include <array>
 #include <numeric>
 #include <algorithm>
+#include <stack>
 
 namespace ch {
 
-	std::vector<std::pair<std::size_t,cv::Point2f>> tracker::update(const std::vector<ch::bboxes>& detections) {
+	const std::vector<cv::Point2f>& tracker::predict() {
+		// Remove past predictions
+		if (!predictions.empty()) {
+			predictions.clear();
+			std::vector<cv::Point2f>(predictions).swap(predictions);
+		}	
+
+		// No need to compute if there are no active trackers
+		if (trackers.empty()) {
+			return predictions;
+		}
+		
+		// Get point predictions for each tracker
+		for (auto iter : trackers) {
+			cv::Mat pr = iter.predict();
+			cv::Point2f pr_xy(pr.at<float>(0), pr.at<float>(1));
+			predictions.push_back(pr_xy);
+		}
+
+		return predictions;
+	}
+
+	std::vector<std::pair<std::size_t,cv::Point2f>> tracker::correct(const std::vector<ch::bboxes>& detections) {
 		std::vector<std::pair<std::size_t,cv::Point2f>> corrects;
 		// Skip kalman update if no detections
 		if (detections.empty()) {
@@ -21,12 +44,8 @@ namespace ch {
 			add_trackers(detections.size() - trackers.size());
 		}
 
-		// Get prediction points for each tracker
-		// Newly created trackers will have no good predictions
-		std::vector<cv::Point2f> predictions = predict();
-
 		// Assign each detection to each tracker
-		std::vector<int> assignments = assign_detections(predictions, detections);
+		std::vector<int> assignments = assign_detections(detections);
 
 		// Get corrections
 		// TODO: Clean up, temporary code
@@ -46,35 +65,17 @@ namespace ch {
 		return corrects;
 	}
 
-	std::vector<cv::Point2f> tracker::predict() {
-		std::vector<cv::Point2f> predict;
-
-		// No need to compute if there are no active trackers
-		if (trackers.empty()) {
-			return predict;
-		}
-		
-		// Get point predictions for each tracker
-		for (auto iter : trackers) {
-			cv::Mat pr = iter.predict();
-			cv::Point2f pr_xy(pr.at<float>(0), pr.at<float>(1));
-			predict.push_back(pr_xy);
-		}
-
-		return predict;
-	}
-
-	std::vector<int> tracker::assign_detections(const std::vector<cv::Point2f>& pres, const std::vector<ch::bboxes>& dets) {
+	std::vector<int> tracker::assign_detections(const std::vector<ch::bboxes>& detections) {
 		// Default value -1 means no detection assigned
-		std::vector<int> assignments(pres.size(), -1);
+		std::vector<int> assignments(predictions.size(), -1);
 
-		// Get our lms net for each (pres, dets) pair
-		std::vector<std::vector<float>> net = compute_lms_net(pres, dets);
+		// Get our lms net for each (predictions, detections) pair
+		std::vector<std::vector<float>> net = compute_lms_net(detections);
 
-		// Start assigning dets to pres
+		// Start assigning detections to predictions
 		const float fl_max = std::numeric_limits<float>::max();
 
-		for(std::size_t i = 0; i < pres.size(); ++i) {
+		for(std::size_t i = 0; i < predictions.size(); ++i) {
 			// Get indices sorted by lowest score to prediction
 			std::vector<std::size_t> indices = sort_index_by_min(net[i]);
 			// Check if all detections have already been assigned
@@ -85,7 +86,7 @@ namespace ch {
 			// If not, move to next index 
 			for(std::size_t j = 0; j < indices.size(); ++j) {
 				bool is_lowest = true;
-				for(std::size_t k = 0; k < pres.size(); ++k) {
+				for(std::size_t k = 0; k < predictions.size(); ++k) {
 					if (indices[j] > net[k][indices[j]]) {
 						is_lowest = false;
 					}
@@ -94,7 +95,7 @@ namespace ch {
 				// to max to avoid it being chosen by another prediction
 				if (is_lowest) {
 					assignments[i] = indices[j];
-					for (std::size_t l = 0; l < pres.size(); ++l) {
+					for (std::size_t l = 0; l < predictions.size(); ++l) {
 						net[l][indices[j]] = fl_max;
 					}
 					// Move to next prediction
@@ -106,17 +107,17 @@ namespace ch {
 		return assignments;
 	}
 
-	std::vector<std::vector<float>> tracker::compute_lms_net(const std::vector<cv::Point2f>& pres, const std::vector<ch::bboxes>& dets) {
+	std::vector<std::vector<float>> tracker::compute_lms_net(const std::vector<ch::bboxes>& detections) {
 		const float fl_max = std::numeric_limits<float>::max();
 		// Create our lms score net with default max float val
-		std::vector<std::vector<float>> net(pres.size(), 
-			std::vector<float>(dets.size(), fl_max));
+		std::vector<std::vector<float>> net(predictions.size(), 
+			std::vector<float>(detections.size(), fl_max));
 
-		// Compute lms for each (pres, dets) pair, lower is better
-		for (std::size_t i = 0; i < pres.size(); ++i) {
-			for (std::size_t j = 0; j < dets.size(); ++j) {
-				float x_sqr = std::pow(pres[i].x - dets[j].rect.x, 2);
-				float y_sqr = std::pow(pres[i].x - dets[j].rect.y, 2);
+		// Compute lms for each (predictions, detections) pair, lower is better
+		for (std::size_t i = 0; i < predictions.size(); ++i) {
+			for (std::size_t j = 0; j < detections.size(); ++j) {
+				float x_sqr = std::pow(predictions[i].x - detections[j].rect.x, 2);
+				float y_sqr = std::pow(predictions[i].x - detections[j].rect.y, 2);
 				net[i][j] = std::sqrt(x_sqr + y_sqr);
 			}
 		}
