@@ -1,35 +1,125 @@
 #include "tracker.h"
 
 #include <cmath>
+#include <limits>
+#include <array>
+#include <numeric>
+#include <algorithm>
 
 namespace ch {
 
 	void tracker::update(const std::vector<ch::bboxes>& detections) {
+		// Skip kalman update if no detections
+		if (detections.empty()) {
+			return;
+		}
+
+		// Add more trackers if more detections than trackers
+		if (detections.size() > trackers.size()) {
+			add_trackers(trackers.size() - detections.size());
+		}
+
+		// Get prediction points for each tracker
+		// Newly created trackers will have no good predictions
+		std::vector<cv::Point2f> predictions = predict();
+
+		// Assign each detection to each tracker
+		std::vector<int> assignments = assign_detections(predictions, detections);
+	}
+
+	std::vector<cv::Point2f> tracker::predict() {
 		std::vector<cv::Point2f> predict;
-		if (!trackers.empty()) {
-			for (auto iter : trackers) {
-				cv::Mat p = iter.predict();
-				cv::Point2f p_xy(p.at<float>(0), p.at<float>(1));
-				predict.push_back(p_xy);
+
+		// No need to compute if there are no active trackers
+		if (trackers.empty()) {
+			return predict;
+		}
+		
+		// Get point predictions for each tracker
+		for (auto iter : trackers) {
+			cv::Mat pr = iter.predict();
+			cv::Point2f pr_xy(pr.at<float>(0), pr.at<float>(1));
+			predict.push_back(pr_xy);
+		}
+
+		return predict;
+	}
+
+	std::vector<int> tracker::assign_detections(const std::vector<cv::Point2f>& pres, const std::vector<ch::bboxes>& dets) {
+		// Default value -1 means no detection assigned
+		std::vector<int> assignments(pres.size(), -1);
+
+		// Get our lms net for each (pres, dets) pair
+		std::vector<std::vector<float>> net = compute_lms_net(pres, dets);
+
+		// Start assigning dets to pres
+		const float fl_max = std::numeric_limits<float>::max();
+
+		for(std::size_t i = 0; i < pres.size(); ++i) {
+			// Get indices sorted by lowest score to prediction
+			std::vector<std::size_t> indices = sort_index_by_min(net[i]);
+			// Check if all detections have already been assigned
+			if (indices[0] == fl_max) {
+				break;
+			}
+			// Check if score is lowest among all predictions
+			// If not, move to next index 
+			for(std::size_t j = 0; j < indices.size(); ++j) {
+				bool is_lowest = true;
+				for(std::size_t k = 0; k < pres.size(); ++k) {
+					if (indices[j] > net[k][indices[j]]) {
+						is_lowest = false;
+					}
+				}
+				// If lowest, assign it to prediction and set that det 
+				// to max to avoid it being chosen by another prediction
+				if (is_lowest) {
+					assignments[i] = indices[j];
+					for (std::size_t l = 0; l < pres.size(); ++l) {
+						net[l][indices[j]] = fl_max;
+					}
+					// Move to next prediction
+					break;
+				}
 			}
 		}
 
-		for (std::size_t i =0; i < trackers.size(); ++i) {
-			cv::Point2f tracker_xy(predict[i].x,predict[i].y); 
-		}
+		return assignments;
 	}
 
-	void tracker::correct(const std::vector<ch::bboxes>& detections) {
-		std::vector<cv::Point2f> dets_xy;
+	std::vector<std::vector<float>> tracker::compute_lms_net(const std::vector<cv::Point2f>& pres, const std::vector<ch::bboxes>& dets) {
+		const float fl_max = std::numeric_limits<float>::max();
+		// Create our lms score net with default max float val
+		std::vector<std::vector<float>> net(pres.size(), 
+			std::vector<float>(dets.size(), fl_max));
 
-		for(auto iter : detections) {
-			cv::Point2f xy((float)iter.rect.x, (float)iter.rect.y);
-			dets_xy.push_back(xy);
+		// Compute lms for each (pres, dets) pair, lower is better
+		for (std::size_t i = 0; i < pres.size(); ++i) {
+			for (std::size_t j = 0; j < dets.size(); ++j) {
+				float x_sqr = std::pow(pres[i].x - dets[j].rect.x, 2);
+				float y_sqr = std::pow(pres[i].x - dets[j].rect.y, 2);
+				net[i][j] = std::sqrt(x_sqr + y_sqr);
+			}
 		}
 
+		return net;
+	}
+
+	std::vector<std::size_t> tracker::sort_index_by_min(const std::vector<float>& scores) {
+		// Create vector with increasing index values
+		std::vector<size_t> indices(scores.size());
+		std::iota(begin(indices), end(indices), static_cast<size_t>(0));
+		
+		// Lambda to sort using scores val for comparison
+		std::sort( begin(indices), end(indices), 
+			[&](size_t a, size_t b) { return scores[a] < scores[b]; } );
+
+		return indices;
 	}
 
 	void tracker::add_trackers(const std::size_t count) {
+		// Create a template kalman filter to be inserted
+		// TODO: Create config file to load template instead of magic numbers
 		cv::KalmanFilter kf(4, 2, 0);
 		kf.transitionMatrix = 
 			*(cv::Mat_<float>(4, 4) << 1,0,1,0, 0,1,0,1,  0,0,1,0,  0,0,0,1);
@@ -46,20 +136,10 @@ namespace ch {
 		cv::setIdentity(kf.measurementNoiseCov, cv::Scalar::all(100));
 		cv::setIdentity(kf.errorCovPost, cv::Scalar::all(1));
 
+		// Add the new trackers
 		for (std::size_t i = 0; i < count; ++i) {
 			trackers.push_back(kf);
 		}
 	}
 
-	std::vector<float> find_lms_scores(const cv::Point2f& track_xy, const std::vector<cv::Point2f>& dets_xy) {
-		std::vector<float> lms_scores(dets_xy.size(), -1.0f);
-		
-		for (std::size_t i = 0; i < dets_xy.size(); ++i) {
-			float x_sqr = std::pow(track_xy.x - dets_xy[i].x, 2);
-			float y_sqr = std::pow(track_xy.y - dets_xy[i].y, 2);
-			lms_scores[i] = std::sqrt(x_sqr + y_sqr);
-		}
-
-		return lms_scores;
-	}
 }

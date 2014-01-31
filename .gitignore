@@ -162,6 +162,14 @@ App_Data/*.ldf
 *.bim.layout
 *.bim_*.settings
 
+#Audio/Visual Files
+*.jpg
+*.png
+*.mp4
+*.mkv
+*.flv
+*.avi
+
 # Microsoft Fakes
 FakesAssemblies/
 
