@@ -2,6 +2,8 @@
 #include <vector>
 #include <iostream>
 #include <iomanip>
+#include <memory>
+
 #include "opencv2/objdetect/objdetect.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/contrib/contrib.hpp"
@@ -9,10 +11,12 @@
 #include "feed.h"
 #include "misc.h"
 #include "detector.h"
-#include <memory>
+#include "tracker.h"
+
 
 int main(int argc, char* argv[])
 { 
+
 	std::string images_folder, models_folder;
 	if( argc > 2 ) {
 		images_folder = argv[1];
@@ -50,6 +54,7 @@ int main(int argc, char* argv[])
 		lsvm->display_detections(feed.get_current_image(), false);
 		++feed;
 	}
+	
 	
 	return 0;
 }

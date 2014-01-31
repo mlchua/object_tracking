@@ -13,7 +13,7 @@ namespace ch {
 
 	class tracker {
 	public:
-		void update(const std::vector<ch::bboxes>& detections);
+		std::vector<std::pair<std::size_t,cv::Point2f>> update(const std::vector<ch::bboxes>& detections);
 
 	private:
 		std::vector<cv::Point2f> predict();

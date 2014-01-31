@@ -1,5 +1,6 @@
 #include "tracker.h"
 
+#include <vector>
 #include <cmath>
 #include <limits>
 #include <array>
@@ -8,15 +9,16 @@
 
 namespace ch {
 
-	void tracker::update(const std::vector<ch::bboxes>& detections) {
+	std::vector<std::pair<std::size_t,cv::Point2f>> tracker::update(const std::vector<ch::bboxes>& detections) {
+		std::vector<std::pair<std::size_t,cv::Point2f>> corrects;
 		// Skip kalman update if no detections
 		if (detections.empty()) {
-			return;
+			return corrects;
 		}
 
 		// Add more trackers if more detections than trackers
 		if (detections.size() > trackers.size()) {
-			add_trackers(trackers.size() - detections.size());
+			add_trackers(detections.size() - trackers.size());
 		}
 
 		// Get prediction points for each tracker
@@ -25,6 +27,23 @@ namespace ch {
 
 		// Assign each detection to each tracker
 		std::vector<int> assignments = assign_detections(predictions, detections);
+
+		// Get corrections
+		// TODO: Clean up, temporary code
+		for (std::size_t t = 0; t < assignments.size(); ++t) {
+			if (assignments[t] < 0) {
+				break;
+			}
+			cv::Mat_<float> m(2,1);
+			m(0) = detections[assignments[t]].rect.x;
+			m(1) = detections[assignments[t]].rect.y;
+			cv::Mat estimated = trackers[t].correct(m);
+			cv::Point2f _pt(estimated.at<float>(0), estimated.at<float>(1));
+			std::pair<std::size_t, cv::Point2f> _t(t, _pt);
+			corrects.push_back(_t);
+		}
+
+		return corrects;
 	}
 
 	std::vector<cv::Point2f> tracker::predict() {
@@ -123,8 +142,6 @@ namespace ch {
 		cv::KalmanFilter kf(4, 2, 0);
 		kf.transitionMatrix = 
 			*(cv::Mat_<float>(4, 4) << 1,0,1,0, 0,1,0,1,  0,0,1,0,  0,0,0,1);
-		cv::Mat_<float> measurement(2,1);
-		measurement.setTo(cv::Scalar(0));
 
 		kf.statePre.at<float>(0) = 0;
 		kf.statePre.at<float>(1) = 0;
@@ -133,7 +150,7 @@ namespace ch {
 
 		cv::setIdentity(kf.measurementMatrix);
 		cv::setIdentity(kf.processNoiseCov, cv::Scalar::all(1));
-		cv::setIdentity(kf.measurementNoiseCov, cv::Scalar::all(100));
+		cv::setIdentity(kf.measurementNoiseCov, cv::Scalar::all(1));
 		cv::setIdentity(kf.errorCovPost, cv::Scalar::all(1));
 
 		// Add the new trackers
