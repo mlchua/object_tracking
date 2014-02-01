@@ -3,10 +3,9 @@
 #include <vector>
 #include <cmath>
 #include <limits>
-#include <array>
 #include <numeric>
 #include <algorithm>
-#include <stack>
+#include <iostream>
 
 namespace ch {
 
@@ -33,6 +32,13 @@ namespace ch {
 	}
 
 	std::vector<std::pair<std::size_t,cv::Point2f>> tracker::correct(const std::vector<ch::bboxes>& detections) {
+
+		// Temp writing
+		std::cout << "Detections" << std::endl;
+		for (auto it : detections) {
+			std::cout << "X:\t" << it.rect.x << "\tY:\t" << it.rect.y << std::endl;
+		}
+
 		std::vector<std::pair<std::size_t,cv::Point2f>> corrects;
 		// Skip kalman update if no detections
 		if (detections.empty()) {
@@ -69,8 +75,23 @@ namespace ch {
 		// Default value -1 means no detection assigned
 		std::vector<int> assignments(predictions.size(), -1);
 
+		// Temp code
+		std::cout << "Predictions" << std::endl;
+		for (auto it : predictions) {
+			std::cout << "X:\t" << it.x << "\tY:\t" << it.y << std::endl;
+		}
+
 		// Get our lms net for each (predictions, detections) pair
 		std::vector<std::vector<float>> net = compute_lms_net(detections);
+
+		// Temp code 
+		std::cout << "Net" << std::endl;
+		for (auto it : net) {
+			for (auto itt : it) {
+				std::cout << itt  << '\t';
+			}
+			std::cout << std::endl;
+		}
 
 		// Start assigning detections to predictions
 		const float fl_max = std::numeric_limits<float>::max();
@@ -102,6 +123,20 @@ namespace ch {
 					break;
 				}
 			}
+			// Temp code 
+			std::cout << "Net" << std::endl;
+			for (auto it : net) {
+				for (auto itt : it) {
+					std::cout << itt  << '\t';
+				}
+				std::cout << std::endl;
+			}
+		}
+
+		// Temp code
+		std::cout << "Assignments" << std::endl;
+		for (std::size_t i = 0; i < assignments.size(); ++i) {
+			std::cout << i << ":\t" << assignments[i] << std::endl;
 		}
 
 		return assignments;
@@ -113,11 +148,20 @@ namespace ch {
 		std::vector<std::vector<float>> net(predictions.size(), 
 			std::vector<float>(detections.size(), fl_max));
 
+		// Temp code 
+		std::cout << "Net" << std::endl;
+		for (auto it : net) {
+			for (auto itt : it) {
+				std::cout << itt  << '\t';
+			}
+			std::cout << std::endl;
+		}
+
 		// Compute lms for each (predictions, detections) pair, lower is better
 		for (std::size_t i = 0; i < predictions.size(); ++i) {
 			for (std::size_t j = 0; j < detections.size(); ++j) {
 				float x_sqr = std::pow(predictions[i].x - detections[j].rect.x, 2);
-				float y_sqr = std::pow(predictions[i].x - detections[j].rect.y, 2);
+				float y_sqr = std::pow(predictions[i].y - detections[j].rect.y, 2);
 				net[i][j] = std::sqrt(x_sqr + y_sqr);
 			}
 		}

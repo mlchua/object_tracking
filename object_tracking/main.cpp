@@ -16,6 +16,11 @@
 
 int main(int argc, char* argv[])
 { 
+	ch::test_tracker();
+
+	return 0;
+
+
 	std::string images_folder, models_folder;
 	if( argc > 2 ) {
 		images_folder = argv[1];
