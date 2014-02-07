@@ -6,6 +6,9 @@
 #include <numeric>
 #include <algorithm>
 #include <iostream>
+#include <iomanip>
+
+#include "assert.h"
 
 namespace ch {
 
@@ -33,38 +36,24 @@ namespace ch {
 
 	std::vector<std::pair<std::size_t,cv::Point2f>> tracker::correct(const std::vector<ch::bboxes>& detections) {
 
-		// Temp writing
-		std::cout << "Detections" << std::endl;
-		for (auto it : detections) {
-			std::cout << "X:\t" << it.rect.x << "\tY:\t" << it.rect.y << std::endl;
-		}
-
 		std::vector<std::pair<std::size_t,cv::Point2f>> corrects;
 		// Skip kalman update if no detections
 		if (detections.empty()) {
 			return corrects;
 		}
 
-		// Add more trackers if more detections than trackers
-		if (detections.size() > trackers.size()) {
-			add_trackers(detections.size() - trackers.size());
-		}
-
 		// Assign each detection to each tracker
-		std::vector<int> assignments = assign_detections(detections);
+		std::vector<int> claimed = assign_detections(detections);
 
 		// Get corrections
 		// TODO: Clean up, temporary code
-		for (std::size_t t = 0; t < assignments.size(); ++t) {
-			if (assignments[t] < 0) {
-				break;
-			}
+		for (std::size_t t = 0; t < claimed.size(); ++t) {
 			cv::Mat_<float> m(2,1);
-			m(0) = detections[assignments[t]].rect.x;
-			m(1) = detections[assignments[t]].rect.y;
+			m(0) = static_cast<float>(detections[t].rect.x);
+			m(1) = static_cast<float>(detections[t].rect.y);
 			cv::Mat estimated = trackers[t].correct(m);
 			cv::Point2f _pt(estimated.at<float>(0), estimated.at<float>(1));
-			std::pair<std::size_t, cv::Point2f> _t(t, _pt);
+			std::pair<std::size_t, cv::Point2f> _t(claimed[t], _pt);
 			corrects.push_back(_t);
 		}
 
@@ -73,73 +62,32 @@ namespace ch {
 
 	std::vector<int> tracker::assign_detections(const std::vector<ch::bboxes>& detections) {
 		// Default value -1 means no detection assigned
-		std::vector<int> assignments(predictions.size(), -1);
+		std::vector<int> claimed(detections.size(), -1);
 
-		// Temp code
-		std::cout << "Predictions" << std::endl;
-		for (auto it : predictions) {
-			std::cout << "X:\t" << it.x << "\tY:\t" << it.y << std::endl;
-		}
-
-		// Get our lms net for each (predictions, detections) pair
-		std::vector<std::vector<float>> net = compute_lms_net(detections);
-
-		// Temp code 
-		std::cout << "Net" << std::endl;
-		for (auto it : net) {
-			for (auto itt : it) {
-				std::cout << itt  << '\t';
-			}
-			std::cout << std::endl;
-		}
-
-		// Start assigning detections to predictions
-		const float fl_max = std::numeric_limits<float>::max();
-
-		for(std::size_t i = 0; i < predictions.size(); ++i) {
-			// Get indices sorted by lowest score to prediction
-			std::vector<std::size_t> indices = sort_index_by_min(net[i]);
-			// Check if all detections have already been assigned
-			if (indices[0] == fl_max) {
-				break;
-			}
-			// Check if score is lowest among all predictions
-			// If not, move to next index 
-			for(std::size_t j = 0; j < indices.size(); ++j) {
-				bool is_lowest = true;
-				for(std::size_t k = 0; k < predictions.size(); ++k) {
-					if (indices[j] > net[k][indices[j]]) {
-						is_lowest = false;
+		// Naive, greedy detection assignment
+		// TODO: Implement better algorithm, runs O(n^2)
+		const int int_max = std::numeric_limits<int>::max();
+		const float float_max = std::numeric_limits<float>::max();
+		std::vector<ch::bboxes> _dets(detections);
+		for (std::size_t i = 0; i < predictions.size(); ++i) {
+			float low_score = float_max;
+			std::size_t low_idx = 0;
+				for (std::size_t j = 0; j < _dets.size(); ++j) {
+					// Apply distance formula
+					float score = std::sqrt(std::pow(predictions[i].x-_dets[j].rect.x,2)
+						+std::pow(predictions[i].y-_dets[j].rect.y,2));
+					if (score < low_score) {
+						low_score = score;
+						low_idx = i;
 					}
 				}
-				// If lowest, assign it to prediction and set that det 
-				// to max to avoid it being chosen by another prediction
-				if (is_lowest) {
-					assignments[i] = indices[j];
-					for (std::size_t l = 0; l < predictions.size(); ++l) {
-						net[l][indices[j]] = fl_max;
-					}
-					// Move to next prediction
-					break;
-				}
-			}
-			// Temp code 
-			std::cout << "Net" << std::endl;
-			for (auto it : net) {
-				for (auto itt : it) {
-					std::cout << itt  << '\t';
-				}
-				std::cout << std::endl;
-			}
+			claimed[low_idx] = i; 
+			_dets[low_idx].rect = cv::Rect(int_max, int_max, 0, 0);
 		}
 
-		// Temp code
-		std::cout << "Assignments" << std::endl;
-		for (std::size_t i = 0; i < assignments.size(); ++i) {
-			std::cout << i << ":\t" << assignments[i] << std::endl;
-		}
+		add_trackers(claimed, detections);
 
-		return assignments;
+		return claimed;
 	}
 
 	std::vector<std::vector<float>> tracker::compute_lms_net(const std::vector<ch::bboxes>& detections) {
@@ -147,15 +95,6 @@ namespace ch {
 		// Create our lms score net with default max float val
 		std::vector<std::vector<float>> net(predictions.size(), 
 			std::vector<float>(detections.size(), fl_max));
-
-		// Temp code 
-		std::cout << "Net" << std::endl;
-		for (auto it : net) {
-			for (auto itt : it) {
-				std::cout << itt  << '\t';
-			}
-			std::cout << std::endl;
-		}
 
 		// Compute lms for each (predictions, detections) pair, lower is better
 		for (std::size_t i = 0; i < predictions.size(); ++i) {
@@ -181,26 +120,36 @@ namespace ch {
 		return indices;
 	}
 
-	void tracker::add_trackers(const std::size_t count) {
+	void tracker::add_trackers(std::vector<int>& claimed, const std::vector<ch::bboxes>& detections) {
 		// Create a template kalman filter to be inserted
 		// TODO: Create config file to load template instead of magic numbers
 		cv::KalmanFilter kf(4, 2, 0);
-		kf.transitionMatrix = 
-			*(cv::Mat_<float>(4, 4) << 1,0,1,0, 0,1,0,1,  0,0,1,0,  0,0,0,1);
-
-		kf.statePre.at<float>(0) = 0;
-		kf.statePre.at<float>(1) = 0;
-		kf.statePre.at<float>(2) = 0;
-		kf.statePre.at<float>(3) = 0;
 
 		cv::setIdentity(kf.measurementMatrix);
-		cv::setIdentity(kf.processNoiseCov, cv::Scalar::all(1));
-		cv::setIdentity(kf.measurementNoiseCov, cv::Scalar::all(1));
-		cv::setIdentity(kf.errorCovPost, cv::Scalar::all(1));
+		cv::setIdentity(kf.processNoiseCov, cv::Scalar::all(100));
+		cv::setIdentity(kf.measurementNoiseCov, cv::Scalar::all(100));
+		cv::setIdentity(kf.errorCovPost, cv::Scalar::all(10));
 
-		// Add the new trackers
-		for (std::size_t i = 0; i < count; ++i) {
-			trackers.push_back(kf);
+		// Add the new trackers for unclaimed detections
+		assert(claimed.size()  == detections.size() && "Claimed and Detections are not same size!");
+		for (std::size_t i = 0; i < claimed.size(); ++i) {
+			// Check if detection is not yet claimed
+			if (claimed[i] == -1) {
+				kf.transitionMatrix = 
+					*(cv::Mat_<float>(4, 4) << 
+					1,0,1,0, 
+					0,1,0,1,  
+					0,0,1,0,  
+					0,0,0,1);
+				kf.statePre.at<float>(0) = (float)detections[i].rect.x;
+				kf.statePre.at<float>(1) = (float)detections[i].rect.y;
+				kf.statePre.at<float>(2) = 1;
+				kf.statePre.at<float>(3) = 1;
+				trackers.push_back(kf);
+				cv::Mat pr = trackers[trackers.size()-1].predict();
+				cv::Point2f pr_xy(pr.at<float>(0), pr.at<float>(1));
+				claimed[i] = trackers.size() - 1;
+			}
 		}
 	}
 

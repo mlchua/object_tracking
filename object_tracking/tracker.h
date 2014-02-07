@@ -21,7 +21,7 @@ namespace ch {
 		std::vector<std::vector<float>> compute_lms_net(const std::vector<ch::bboxes>& detections);
 		std::vector<std::size_t> tracker::sort_index_by_min(const std::vector<float>& scores);
 		
-		void add_trackers(const std::size_t count);
+		void tracker::add_trackers(std::vector<int>& claimed, const std::vector<ch::bboxes>& detections);
 
 		std::vector<cv::KalmanFilter> trackers;
 		std::vector<cv::Point2f> predictions;
