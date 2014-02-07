@@ -18,6 +18,8 @@ namespace ch {
 	std::vector<ch::bboxes> lsvm::detect(const cv::Mat& image) {
 		detector.detect(image, detections, overlap_th);
 
+		// Convert detections to bounding boxes and remove detections
+		// below threshold
 		std::vector<ch::bboxes> bounding_boxes;
 		std::vector<cv::LatentSvmDetector::ObjectDetection> t_detections;
 		for (auto r_iter = detections.rbegin(); r_iter != detections.rend(); ++r_iter) {
@@ -28,6 +30,7 @@ namespace ch {
 			}
 		}
 		detections = t_detections;
+
 		return bounding_boxes;
 	}
 
@@ -37,6 +40,7 @@ namespace ch {
 
 		cv::Mat drawn(image);
 
+		// Draw detections on image
 		std::size_t index = 0;
 		for (auto iter : detections) {
 			cv::rectangle(drawn, iter.rect, colors[iter.classID], 3);

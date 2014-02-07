@@ -22,6 +22,7 @@ int main(int argc, char* argv[])
 
 	return 0;
 
+	// Read input parameters
 	std::string images_folder, models_folder;
 	if( argc > 2 ) {
 		images_folder = argv[1];
@@ -36,6 +37,7 @@ int main(int argc, char* argv[])
 
 	std::vector<std::string> models = ch::readDirectory(models_folder);
 
+	// Create our detector and tracker
 	const float detect_th = 0.0f;
 	const float overlap_th = 0.2f;
 	std::unique_ptr<ch::detector_base> lsvm(new ch::lsvm(models, detect_th, overlap_th));
@@ -47,6 +49,7 @@ int main(int argc, char* argv[])
 		std::cout << iter << std::endl;
 	}
 
+	// Start iterating through our feed
 	while (feed.is_open()) {
 		std::cout << "Processing: " << feed.get_current_name() << std::endl;
 

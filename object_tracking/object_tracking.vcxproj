@@ -88,12 +88,14 @@
     <ClCompile Include="feed.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="misc.cpp" />
+    <ClCompile Include="system.cpp" />
     <ClCompile Include="tracker.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="detector.h" />
     <ClInclude Include="feed.h" />
     <ClInclude Include="misc.h" />
+    <ClInclude Include="system.h" />
     <ClInclude Include="tracker.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

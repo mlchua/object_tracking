@@ -6,6 +6,7 @@
 #include "opencv2/contrib/contrib.hpp"
 
 #include "detector.h"
+
 #include <vector>
 #include <utility>
 

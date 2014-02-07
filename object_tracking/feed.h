@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+
 #include "opencv2/core/core.hpp"
 #include "opencv2/objdetect/objdetect.hpp"
 #include "opencv2/highgui/highgui.hpp"
@@ -16,7 +17,6 @@ namespace ch {
 		const bool is_open();
 		feed& operator++();
 	private:
-		const std::vector<std::string> read_directory(const std::string& directory_name);
 
 		cv::Mat image;
 		std::string feed_name;
