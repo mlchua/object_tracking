@@ -127,8 +127,8 @@ namespace ch {
 
 		cv::setIdentity(kf.measurementMatrix);
 		cv::setIdentity(kf.processNoiseCov, cv::Scalar::all(100));
-		cv::setIdentity(kf.measurementNoiseCov, cv::Scalar::all(100));
-		cv::setIdentity(kf.errorCovPost, cv::Scalar::all(100));
+		cv::setIdentity(kf.measurementNoiseCov, cv::Scalar::all(10));
+		cv::setIdentity(kf.errorCovPost, cv::Scalar::all(10));
 
 		// Add the new trackers for unclaimed detections
 		assert(claimed.size()  == detections.size() && "Claimed and Detections are not same size!");

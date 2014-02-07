@@ -13,6 +13,7 @@ namespace ch {
 				type=DET_TYPE::LSVM;
 				detector.load(models);
 				cv::generateColors(colors, get_class_count());
+				count = 0;
 	}
 
 	std::vector<ch::bboxes> lsvm::detect(const cv::Mat& image) {
@@ -50,7 +51,10 @@ namespace ch {
 			++index;
 		}
 
-		cv::imshow("result", image);
+		cv::imshow("result", drawn);
+		std::string out = "results/detect/" + std::to_string(count) + ".png";
+		cv::imwrite(out, drawn);
+		++count;
 		(wait_key) ? cv::waitKey(0) : cv::waitKey(30);
 	}
 

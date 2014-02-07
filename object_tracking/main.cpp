@@ -16,12 +16,6 @@
 
 int main(int argc, char* argv[])
 { 
-
-	// Test our tracker
-	ch::test_tracker();
-
-	return 0;
-
 	// Read input parameters
 	std::string images_folder, models_folder;
 	if( argc > 2 ) {
@@ -38,8 +32,8 @@ int main(int argc, char* argv[])
 	std::vector<std::string> models = ch::readDirectory(models_folder);
 
 	// Create our detector and tracker
-	const float detect_th = 0.0f;
-	const float overlap_th = 0.2f;
+	const float detect_th =  0.0f;
+	const float overlap_th = 0.5f;
 	std::unique_ptr<ch::detector_base> lsvm(new ch::lsvm(models, detect_th, overlap_th));
 	std::unique_ptr<ch::tracker> kalman(new ch::tracker);
 	ch::feed feed(images_folder);
@@ -56,7 +50,7 @@ int main(int argc, char* argv[])
 		std::vector<cv::Point2f> predictions = kalman->predict();
 		std::vector<ch::bboxes> detections = lsvm->detect(feed.get_current_image());
 		std::vector<std::pair<std::size_t,cv::Point2f>> corrections = 
-			kalman->correct(detections);
+		kalman->correct(detections);
 
 		std::size_t index = 0;
 		std::cout << "Det#\tScore" << std::endl;

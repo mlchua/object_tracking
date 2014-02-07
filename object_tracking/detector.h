@@ -44,6 +44,7 @@ namespace ch {
 		bool load_models(const std::vector<std::string>& models);
 	
 	private:
+		std::size_t count;
 		float overlap_th;
 		float detect_th;
 		cv::LatentSvmDetector detector;
