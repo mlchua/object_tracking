@@ -28,7 +28,7 @@ namespace ch {
 		return *iterator;
 	}
 
-	const bool feed::is_open() {
+	bool feed::is_open() {
 		return (iterator != feed_list.end() ? true : false);
 	}
 

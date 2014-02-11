@@ -14,7 +14,7 @@ namespace ch {
 		feed(const std::string _feed_name);
 		const cv::Mat& get_current_image();
 		const std::string& get_current_name();
-		const bool is_open();
+		bool is_open();
 		feed& operator++();
 	private:
 
