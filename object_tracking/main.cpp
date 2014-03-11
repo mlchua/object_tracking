@@ -24,7 +24,6 @@ int main(int argc, char* argv[])
 		images_folder = argv[1];
 		models_folder = argv[2];
 	}
-
 	else {
 		std::cout << std::endl << "Using default images and models folders." << std::endl;
 		images_folder = "images";
@@ -48,7 +47,7 @@ int main(int argc, char* argv[])
 		std::vector<cv::Point2f> predictions = system.tracker_predict();
 		std::vector<ch::bboxes> detections = system.detector_detect(system.get_feed());
 		std::vector<std::pair<std::size_t,cv::Point2f>> corrections = 
-		system.tracker_correct(detections);
+			system.tracker_correct(detections);
 
 		std::size_t index = 0;
 		std::cout << "Det#\tScore" << std::endl;

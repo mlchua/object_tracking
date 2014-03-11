@@ -149,7 +149,7 @@ namespace ch {
 				cv::Mat pr = trackers[trackers.size()-1].predict();
 				cv::Point2f pr_xy(pr.at<float>(0), pr.at<float>(1));
 				claimed[i] = trackers.size() - 1;
-			}
+			} 
 		}
 	}
 
